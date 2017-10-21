@@ -12,6 +12,9 @@ def PastryAPI do
         #applicaiton wide changes will be made here
     end
 
-
+    def initPastry(numNode, numReq) do
+        
+        #calculate node space and call the init for each pastry node
+    end
 
 end
