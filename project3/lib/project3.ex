@@ -23,5 +23,13 @@ defmodule Project3 do
     IO.puts "numNodes:" <> numNodes
     IO.puts "numReq:" <> numReq
     PastryAPI.initPastry(numNodes, numReq)
+
+
+    looper
   end
+
+  def looper do
+    looper
+  end
+
 end

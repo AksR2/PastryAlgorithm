@@ -1,50 +1,75 @@
 def Pastrynode do
     use Genserver
 
-    def init(:ok) do
-        #NodeId of the node
-        nodeId = 0
-        #Number of nodes in the network
-        numNode = 0
-        #Number of requests seen by the node
-        numReq = 0
-        #Number of rows in the routing table
-        numRows = 0
-        {:ok, {nodeId, numNode, numReq, numRows}}
+ #Generate Node process
+    def start(node_id,b) do
+        hash=:crypto.hash(:sha, to_string(node_id)) |> Base.encode16 |> Convertat.from_base(16) |> Convertat.to_base(b+1)
+        {:ok,pid} = GenServer.start(__MODULE__,hash)
+        {pid,hash,node_id}
     end
 
-    def handle_call({:route, msg, key}) do
-        #send the message to the key
+    def init(args) do  
+        {:ok,%{:node_id => args}}
     end
 
-    def handle_cast({:deliver, msg, key}) do
-        #send the message delivered notification
-        #might want to send a notification to the pastry API regarding convergence here
+    
+    # fetching nearest node for the last case in pastry
+    def searchAllForNearestNeighbour(allSet,key,nodeHash,lngth) do
+    
+    end 
+
+
+    def findNearestNeighbour(key,length_longest_prefix,c_idx,ncols,row) do
+            
     end
 
-    def handle_cast({:forward, msg, key, nextId}) do
-        #message forwarded to the node with nodeId as nextId
+    #Get the length of the longest prefix match
+    def getLengthLPM(key,hash,start_value,longest_prefix_count) do
+        
     end
 
-    def handle_cast({:newLeafs, leafSet}) do
-        #node will inform about a new leaf set here
-        #might also want to send a message to the pastry API if it is to make application wide changes
+    #routing table construction
+   def constructNodeRouteTable(nodeHash,nodelist,b) do
+
     end
 
-    #Set the initial values of the pastry network. All the initial values are provided here.
-    #Setting up of the routing table and all will be done after this.
-    def setValues(pid, nodeId, numNode, numReq, log4) do
-        Genserver.cast(pid, {:setValues, nodeId, numNode, numReq, numRows})
+
+    def routeTableRows(node_list,rows,cols,r_idx,node_hash,routing_table) do
+
     end
 
-    #Setting up of the initial values.
-    #After this the query for the routing table, the leaf nodes and the neighbour nodes can be done.
-    def handle_cast(:setValues, sentNodeId, sentNumNode, sentNumReq, sentNumRows) do
-        nodeId = sentNodeId
-        numNode = sentNumNode
-        numReq = sentNumReq
-        numRows = sentNumRows
-        {:noreply, {nodeId, numNode, numReq, numRows}}
+    def routeTableCols(node_list,rows,cols,r_idx,c_idx,node_hash,substring,routing_table) do
+
+    end
+
+    #Get functions for the routing table column functions for extra flexibility
+    def getRoutTableRow(nrows,ncols,list_routing_table,r_idx,c_idx,routing_table) do
+
+    end
+
+
+    def getRouteTableCol(nrows,ncols,list_routing_table,r_idx,c_idx,routing_table) do
+
+    end
+
+
+    #calculate the lower leaf set
+    def computeLeafLower(list_lower_leaf, idx, list_node , b) do
+
+    end
+    
+     # calculate the upper leaf set
+    def computerLeafUpper(list_upper_leaf, idx,list_node, b) do
+        
+    end
+
+    #compute neighbor set
+    def computerNeighborSet(start_value,list_node, idx ,neighbor_list) do
+       
+    end
+
+    def findMatchingSubstrInList(node_list,substring,nodeHash) do
+
     end
 
 end
