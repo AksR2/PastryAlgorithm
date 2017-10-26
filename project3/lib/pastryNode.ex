@@ -1,6 +1,6 @@
 def Pastrynode do
     use Genserver
-
+@b 2
  #Generate Node process
     def start(node_id,b) do
         hash=:crypto.hash(:sha, to_string(node_id)) |> Base.encode16 |> Convertat.from_base(16) |> Convertat.to_base(b+1)
@@ -59,12 +59,12 @@ def Pastrynode do
     end
     
      # calculate the upper leaf set
-    def computerLeafUpper(list_upper_leaf, idx,list_node, b) do
+    def computeLeafUpper(list_upper_leaf, idx,list_node, b) do
         
     end
 
     #compute neighbor set
-    def computerNeighborSet(start_value,list_node, idx ,neighbor_list) do
+    def computeNeighbourSet(start_value,list_node, idx ,neighbor_list) do
        
     end
 
