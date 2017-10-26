@@ -1,11 +1,10 @@
 def Pastrynode do
     use Genserver
-@b 2
+@b 4
  #Generate Node process
-    def start(node_id,b) do
-        hash=:crypto.hash(:sha, to_string(node_id)) |> Base.encode16 |> Convertat.from_base(16) |> Convertat.to_base(b+1)
-        {:ok,pid} = GenServer.start(__MODULE__,hash)
-        {pid,hash,node_id}
+    def start(hashid) do
+        {:ok,pid} = GenServer.start(__MODULE__,hashid)
+        {pid,hashid}
     end
 
     def init(args) do  
@@ -13,6 +12,14 @@ def Pastrynode do
     end
 
     
+
+    def longest_prefix_match(key,hash_id,start_value,longest_prefix_count) do
+            if(String.at(key,start_value) == String.at(hash_id,start_value)) do
+            longest_prefix_count=longest_prefix_matched(key,hash_id,start_value+1,longest_prefix_count+1)
+            end
+            longest_prefix_count
+        end
+
     # fetching nearest node for the last case in pastry
     def searchAllForNearestNeighbour(allSet,key,nodeHash,lngth) do
     

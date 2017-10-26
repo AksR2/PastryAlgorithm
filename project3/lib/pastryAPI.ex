@@ -49,15 +49,52 @@ def PastryAPI do
         end)
     end
 
-    def startMagic(numNode, numReq) do
+    def startAlgo(numNode, numReq) do
         {:ok, _} = Genserver.start_link(__MODULE__, :ok, name: Daddy)
         rangeOfNum = 1..numNode
+
+        # return the idx_hashid map, hashid_dval map and hashid sorted tuple.
+        #only generates the node ids and maps doesn't spawn yet.
+        {idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup} = genNodeIds(range)
+        
+        buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup)
+
         nodeList = spawnNodesAndGetPidList(Enum.to_list(rangeOfNum), numNode, [], [], 1)
         nodeList = Enum.sort(nodeList, fn(m,n) -> elem(m,2) < elem(n,2) end)
         Genserver.cast(Daddy, {:updatePastry, numReq, nodeList, numNode})
         pastryInit(nodeList, numReq)
         sendDataNow(numNode, 0, nodeList)
     end
+
+    def buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup,numNodes, numReq) do
+
+            leafUpper = PastryNode.computeLeafUpper([], elem(x, 1), nodeList, @b)
+            leafLower = PastryNode.computeLeafLower([], elem(x, 1), nodeList, @b)
+
+    end
+
+    def genNodeIds(range) do
+
+        # generate the hashids for the range 1..nodenum.
+        idx_to_hashid_map=Enum.reduce(range, %{}, fn (idx,acc_idx_hashid_map) -> (
+            hashid= :crypto.hash(:md5,"#{idx}") |> Base.encode16()
+            Map.put(acc_idx_hashid_map,idx, hashid)
+        )end)
+
+        hashrange=Map.values(idx_to_hashid_map)
+    
+        #hashid to decimal value map.
+        hashid_dval_map=Enum.reduce(hashrange, %{}, fn (hashid,acc_hashid_dval_map) -> (
+            dval=Integer.parse(hashid,16)
+            Map.put(acc_hashid_dval_map, hashid,dval)
+        )end)
+
+        #sorted hashid map for leaf set generation
+        sorted_hashid_tup =  Enum.sort(hashrange, fn(x,y) -> (hashid_dval_map[x]<hashid_dval_map[y])end) |> List.to_tuple
+
+        {idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup}
+    end
+
 
     def sendDataNow(numNode, currentCount, nodeList) do
         if (currentCount < numNode) do
