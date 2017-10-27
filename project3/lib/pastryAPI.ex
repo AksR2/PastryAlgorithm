@@ -37,6 +37,11 @@ def PastryAPI do
         {:noreply, state}
     end
 
+    def handle_call({:getPidFromDaddy, hashid}, _from, state) do
+        pid_hashid_map=state[:node_map]
+        pid_hashid_map[hashid]
+    end
+
     def startAlgo(numNode, numReq) do
         {:ok, _} = Genserver.start_link(__MODULE__, :ok, name: {:global, :Daddy})
         rangeOfNum = 1..numNode
@@ -44,32 +49,44 @@ def PastryAPI do
         # return the idx_hashid map, hashid_dval map and hashid sorted tuple.
         #only generates the node ids and maps doesn't spawn yet.
         {idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup} = genNodeIds(range)
-        
-        hashid_pid_map = buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup)
+        #intialize the hashid pid map and then build the network using that
+        hashid_pid_map=getPIDforHashid(hashid_slist)
+
+        buildNetwork(hashid_pid_map,idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup)
 
         Genserver.cast(Daddy, {:updatePastry, numReq, hashid_pid_map, numNode})
         
         sendDataNow(numNode, 0, Map.keys(hashid_pid_map), hashid_pid_map)
     end
 
-    def buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup,numNodes, numReq) do
+    def getPIDforHashid(hashid_slist) do
+        hashid_pid_map=Enum.reduce(hashid_slist, %{}, fn(hashid, acc_hashid_pid_map ) -> (
+            {pid,hashid}=PastryNode.start(hashid)
+            Map.put(acc_hashid_pid_map,hashid,pid)
+            acc_hashid_pid_map
+        )end)
+
+        hashid_pid_map
+    end
+
+
+    def buildNetwork(hashid_pid_map,idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup,numNodes, numReq) do
         hashid_slist= Tuple.to_list(sorted_hashid_tup)
         # Create a pid to hashid map along with leaf sets , routing table and neighbourhoodset. 
         #each character is 4 bit in hex. and 128 bit hash. Thus 128/4 = 32 which is number of digits in the hashid 
         numRows = 32
         #hard coding for b=4. This is 0-F values which is 16. 
         numCols = 16 
-        hashid_pid_map=Enum.reduce(hashid_slist, %{}, fn (hashid, acc_hashid_pid_map) -> (
+
+        Enum.each(hashid_slist, fn (hashid) -> (
             hashid_idx=searchIdx(hashid_slist,hashid)
-            {leafLower,leafUpper} = PastryNode.computeLeafUpperAndLower(sorted_hashid_tup, hashid,hashid_idx)
+            {leafLower,leafUpper} = PastryNode.computeLeafUpperAndLower(hashid_pid_map,sorted_hashid_tup, hashid,hashid_idx)
             route_table=%{}
-            route_table = PastryNode.computeRouteTable(sorted_hashid_tup,hashid_slist,hashid,hashid_idx,route_table)
-            {pid,hashid}=PastryNode.start(hashid)
+            route_table = PastryNode.computeRouteTable(hashid_pid_map,sorted_hashid_tup,hashid_slist,hashid,hashid_idx,route_table)
             Genserver.cast(pid,{:updateNode,leafUpper,leafLower,route_table,numReq,numRows,numCols})
-            Map.put(acc_hashid_pid_map,hashid,pid)
         )end)
 
-        hashid_pid_map
+        
 
     end
 

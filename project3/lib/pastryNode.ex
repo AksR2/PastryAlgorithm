@@ -30,13 +30,14 @@ def Pastrynode do
         result
     end
 
-    def set_routing_table_entry(entry, longest_prefix_count, routing_table) do 
+    def set_routing_table_entry(entry, longest_prefix_count, hashid_pid_map, routing_table) do 
         numRow = longest_prefix_count
-        numCol = Integer.parse(String.at(entry, longest_prefix_count+1))
+        numCol = elem(Integer.parse(String.at(entry, longest_prefix_count+1),16),0)
         routing_table_updated = cond do
             routing_table[numRow][numCol] == nil ->
                 rowMap = routing_table[numRow]
-                rowMap = Map.put(rowMap, numCol, entry)
+                entry_tup={entry,hashid_pid_map[entry]}
+                rowMap = Map.put(rowMap, numCol, entry_tup)
                 routing_table = Map.put(routing_table, numRow, rowMap)
             true ->
                 routing_table
@@ -61,12 +62,12 @@ def Pastrynode do
     end
 
     #routing table construction
-    def computeRouteTable(sorted_hashid_tup,hashid_slist,hashid,hashid_idx,routing_table) do
+    def computeRouteTable(hashid_pid_map,sorted_hashid_tup,hashid_slist,hashid,hashid_idx,routing_table) do
         
         routing_table=Enum.reduce(hashid_slist, %{}, fn( entry ,acc_routing_table) -> (
             if(String.equivalent?(entry,hashid) == false) do
                  longest_prefix_count = longest_prefix_match(key,hashid,0,0)
-                 acc_routing_table=Map.merge (acc_routing_table ,set_routing_table_entry(entry, longest_prefix_count, acc_routing_table))
+                 acc_routing_table=Map.merge (acc_routing_table ,set_routing_table_entry(entry, longest_prefix_count, hashid_pid_map, acc_routing_table))
             end
         ) end)
 
@@ -84,37 +85,44 @@ def Pastrynode do
         idx
     end
 
-    #calculate the lower leaf and upper leaf sets
-    def computeLeafUpperAndLower(sorted_hashid_tup, hashid, hashid_idx) do
+    #calculate the lower leaf and upper leaf sets ascending (lower) , descending (upper)
+    def computeLeafUpperAndLower(hashid_pid_map, sorted_hashid_tup, hashid, hashid_idx) do
 
         ulimit=tuple_size(sorted_hashid_tup)-1
         lrange=(hashid_idx-8)..hashid_idx
         leaf_lower=Enum.reduce (lrange, {} ,fn(idx, acc_tup) -> (
-                if(idx >-1){
-                    Tuple.append(acc_tup,elem(sorted_hashid_tup,idx))
+                if(idx > -1){
+                    entry=elem(sorted_hashid_tup,idx)
+                    Tuple.append(acc_tup,{entry,hashid_pid_map[entry]})
                 }
+                acc_tup
         )end)
         # for the lower most case where the list will be null other wise.
         if(tuple_size(leaf_lower)==0) do
-            Tuple.append(leaf_lower,hashid)
+            Tuple.append(leaf_lower,{hashid,hashid_pid_map[hashid]})
         end
         #DEBUG
         #IO.inspect leaf_lower
         hrange=hashid_idx..(hashid_idx+8)
-        leaf_upper=Enum.reduce (hrange, {} ,fn(idx, acc_tup) -> (
+        leaf_upper=Enum.reduce (hrange, [] ,fn(idx, acc_list) -> (
                 if(idx < ulimit){
-                    Tuple.append(acc_tup,elem(sorted_hashid_tup,idx))
+                    # Tuple.append(acc_tup,elem(sorted_hashid_tup,idx))
+                    entry=elem(sorted_hashid_tup,idx)
+                    entry_tup={entry,hashid_pid_map[entry]}
+                    [entry_tup]++acc_list
                 }
+                acc_list
         )end) 
         # for the lower most case where the list will be null other wise.
-        if(tuple_size(leaf_upper)==0) do
-            Tuple.append(leaf_upper,hashid)
+        if(length(leaf_upper)==0) do
+            # Tuple.append(leaf_upper,hashid)
+            [{hashid,hashid_pid_map[entry]}]++leaf_upper
         end
         #DEBUG
         #IO.inspect leaf_upper
         #convert to list and return
         leaf_lower=Tuple.to_list(leaf_lower)
-        leaf_upper=Tuple.to_list(leaf_upper)
+        # leaf_upper=Tuple.to_list(leaf_upper)
         #return the leaves
         {leaf_lower,leaf_upper}
     end
