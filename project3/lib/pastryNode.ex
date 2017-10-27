@@ -25,7 +25,7 @@ def Pastrynode do
             routing_table[numRow][numCol] != nil ->
                 routing_table[numRow][numCol]
             true ->
-                nil
+                {nil,nil}
         end
         result
     end
@@ -127,6 +127,13 @@ def Pastrynode do
         {leaf_lower,leaf_upper}
     end
 
+    def diffKeyElement(key, x) do
+        k=elem(Integer.parse(key,16),0)
+        x=elem(Integer.parse(x,16),0)
+        diff=k-x
+        diff
+    end
+
     def handle_cast({:updateNode,leaf_upper,leaf_lower,routing_table,num_req,num_rows,num_cols},state) do
         {_,leaf_upper}=Map.get_and_update(state,:leaf_upper, fn current_value -> {current_value,leaf_upper} end)
         {_,leaf_lower}=Map.get_and_update(state,:leaf_lower, fn current_value -> {current_value,leaf_lower} end)
@@ -158,8 +165,8 @@ def Pastrynode do
             if(String.equivalent?(key, hashId) == false) do
                 Genserver.cast(self(), {:route, hashId, key, 0, pathTillNow})
                 currentCount = currentCount + 1
-                Genserver.cast(self(), {:recieveMessage, pId, currentCount, hashId, nodeList})
             end
+            Genserver.cast(self(), {:recieveMessage, pId, currentCount, hashId, nodeList})
         end
         {:noreply, state}
     end
@@ -183,7 +190,7 @@ def Pastrynode do
         minDiffNode = nil
         minDiff = nil
         minPid = nil
-        if (lowest_ele < source && source < highest_ele) do
+        if (lowest_ele <= source && source <= highest_ele) do
             Enum.each(leaf_list, fn({x, pId}) -> (
                 currentDiff = diffKeyElement(key, x)
                 if(minDiff == nil || currentDiff < minDiff) do
@@ -197,16 +204,15 @@ def Pastrynode do
         else
             longest_prefix_count = longest_prefix_match(source, destination)
             routing_table = state[:routing_table]
-            routing_table_entry = get_routing_table_entry(destination, longest_prefix_count, routing_table)
+            {routing_table_entry,entry_pid} = get_routing_table_entry(destination, longest_prefix_count, routing_table)
             if(routing_table_entry != nil) do
                 pathTillNow = [routing_table_entry] ++ pathTillNow
-                pId = Generver.call({:global, :Daddy}, {:getPidFromDaddy, routing_table_entry})
-                Genserver.cast(pId, {:route, routing_table_entry, destination, hopCount + 1, pathTillNow})
+                Genserver.cast(entry_pid, {:route, routing_table_entry, destination, hopCount + 1, pathTillNow})
             else
                 a_d = diffKeyElement(source, destination)
                 Enum.each(routing_table, fn({r, row}) ->(
                     Enum.each(row, fn(c, {hashid, pid}) -> (
-                        leaf_list = [hashid] ++ leaf_list
+                        leaf_list = [{hashid, pid}] ++ leaf_list
                     )end)
                 )end)
                 isFound = false
@@ -214,13 +220,19 @@ def Pastrynode do
                     t_len = longest_prefix_match(x, destination)
                     if(t_len >= longest_prefix_count) do
                         t_d = diffKeyElement(x, destination)
-                        if(t_d < a_d && isFound == false) do
+                        if(isFound == false && t_d < a_d) do
                             isFound = true
                             pathTillNow = [source] ++ pathTillNow
                             Genserver.cast(pid, {:route, x, destination, hopCount + 1, pathTillNow})
                         end
                     end
                 )end)
+
+                #not expecting this to happen at all.
+                if(isFound == false) do
+                    # call daddy
+                end
+
             end
         end
 
