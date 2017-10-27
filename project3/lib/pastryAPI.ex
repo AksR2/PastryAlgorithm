@@ -97,7 +97,7 @@ def PastryAPI do
 
 
     def sendDataNow(numNode, currentCount, nodeList, hashIdMap) do
-        Enum.each(nodeList, fn(x) - (
+        Enum.each(nodeList, fn(x) -> (
             pId = hashIdMap[x]
             Genserver.cast(pId,{:recieveMessage, pId, 0, x, nodeList})
         ) end)
