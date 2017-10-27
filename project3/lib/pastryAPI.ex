@@ -69,6 +69,7 @@ def PastryAPI do
             Map.put(acc_hashid_pid_map,hashid,pid)
         )end)
 
+        hashid_pid_map
 
     end
 
