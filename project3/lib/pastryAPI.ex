@@ -38,7 +38,7 @@ def PastryAPI do
     end
 
     def startAlgo(numNode, numReq) do
-        {:ok, _} = Genserver.start_link(__MODULE__, :ok, name: Daddy)
+        {:ok, _} = Genserver.start_link(__MODULE__, :ok, name: {:global, :Daddy})
         rangeOfNum = 1..numNode
 
         # return the idx_hashid map, hashid_dval map and hashid sorted tuple.

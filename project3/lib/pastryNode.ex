@@ -21,9 +21,13 @@ def Pastrynode do
     def get_routing_table_entry(key, longest_prefix_count, routing_table) do
         numRow = longest_prefix_count
         numCol = Integer.parse(String.at(key, longest_prefix_count+1))
-        if(routing_table[numRow][numCol] != nil) do
-            routing_table[numRow][numCol]
+        result = cond do
+            routing_table[numRow][numCol] != nil ->
+                routing_table[numRow][numCol]
+            true ->
+                nil
         end
+        result
     end
 
     def set_routing_table_entry(entry, longest_prefix_count, routing_table) do 
@@ -115,10 +119,6 @@ def Pastrynode do
         {leaf_lower,leaf_upper}
     end
 
-    def findMatchingSubstrInList(node_list,substring,nodeHash) do
-
-    end
-
     def handle_cast({:updateNode,leaf_upper,leaf_lower,routing_table,num_req,num_rows,num_cols},state) do
         {_,leaf_upper}=Map.get_and_update(state,:leaf_upper, fn current_value -> {current_value,leaf_upper} end)
         {_,leaf_lower}=Map.get_and_update(state,:leaf_lower, fn current_value -> {current_value,leaf_lower} end)
@@ -142,7 +142,7 @@ def Pastrynode do
         {:noreply,state}
     end
 
-    def handle_cast(:recieveMessage, {currentCount, hashId, nodeList}) do
+    def handle_cast({:recieveMessage, currentCount, hashId, nodeList}, state) do
         if(currentCount < state[:num_req]) do
             key = Enum.random(nodeList)
             nodeList = nodeList -- [key]
@@ -153,6 +153,70 @@ def Pastrynode do
                 Genserver.cast(self(), {:recieveMessage, pId, currentCount, hashId, nodeList})
             end
         end
+        {:noreply, state}
+    end
+
+    def handle_cast({:route, source, destination, hopCount, pathTillNow}, state) do
+        if(length(pathTillNow) > 0) do
+            if(Enum.member?(pathTillNow, source) == true) do
+                #call daddy (*ah*) delivered
+                {:noreply, state}
+            end
+        end
+        if(String.equivalent?(source, destination) == true) do
+            #call daddy (*ah*) delivered
+            {:noreply, state}
+        end
+        leaf_upper = state[:leaf_upper]
+        leaf_lower = state[:leaf_lower]
+        leaf_list = leaf_lower ++ leaf_upper
+        lowest_ele = hd(leaf_lower)
+        highest_ele = hd(leaf_upper)
+        minDiffNode = nil
+        minDiff = nil
+        minPid = nil
+        if (lowest_ele < source && source < highest_ele) do
+            Enum.each(leaf_list, fn({x, pId}) -> (
+                currentDiff = diffKeyElement(key, x)
+                if(minDiff == nil || currentDiff < minDiff) do
+                    minDiff = currentDiff
+                    minDiffNode = x
+                    minPid = pId
+                end
+            )end)
+            pathTillNow = [source] ++ pathTillNow
+            Genserver.cast(minPid, {:route, minDiffNode, destination, hopCount + 1, pathTillNow})
+        else
+            longest_prefix_count = longest_prefix_match(source, destination)
+            routing_table = state[:routing_table]
+            routing_table_entry = get_routing_table_entry(destination, longest_prefix_count, routing_table)
+            if(routing_table_entry != nil) do
+                pathTillNow = [routing_table_entry] ++ pathTillNow
+                pId = Generver.call({:global, :Daddy}, {:getPidFromDaddy, routing_table_entry})
+                Genserver.cast(pId, {:route, routing_table_entry, destination, hopCount + 1, pathTillNow})
+            else
+                a_d = diffKeyElement(source, destination)
+                Enum.each(routing_table, fn({r, row}) ->(
+                    Enum.each(row, fn(c, {hashid, pid}) -> (
+                        leaf_list = [hashid] ++ leaf_list
+                    )end)
+                )end)
+                isFound = false
+                Enum.each(leaf_list, fn({x,pid}) -> (
+                    t_len = longest_prefix_match(x, destination)
+                    if(t_len >= longest_prefix_count) do
+                        t_d = diffKeyElement(x, destination)
+                        if(t_d < a_d && isFound == false) do
+                            isFound = true
+                            pathTillNow = [source] ++ pathTillNow
+                            Genserver.cast(pid, {:route, x, destination, hopCount + 1, pathTillNow})
+                        end
+                    end
+                )end)
+            end
+        end
+
+        {:noreply, state}
     end
 
 end
