@@ -71,12 +71,20 @@ def PastryAPI do
 
         hashid_slist= Tuple.to_list(sorted_hashid_tup)
         # Create a pid to hashid map along with leaf sets , routing table and neighbourhoodset. 
-        Enum.reduce(hashid_slist, %{}, fn (hashid) -> (
-
+        #each character is 4 bit in hex. and 128 bit hash. Thus 128/4 = 32 which is number of digits in the hashid 
+        numRows = 32
+        #hard coding for b=4. This is 0-F values which is 16. 
+        numCols = 16 
+        hashid_pid_map=Enum.reduce(hashid_slist, %{}, fn (hashid, acc_hashid_pid_map) -> (
             hashid_idx=searchIdx(hashid_slist,hashid)
             {leafLower,leafUpper} = PastryNode.computeLeafUpperAndLower(sorted_hashid_tup, hashid,hashid_idx)
-            
+            route_table=%{}
+            route_table = PastryNode.computeRouteTable(sorted_hashid_tup,hashid_slist,hashid,hashid_idx,route_table)
+            {pid,hashid}=PastryNode.start(hashid)
+            Genserver.cast(pid,{:updateNode,leafUpper,leafLower,route_table,numReq,numRows,numCols})
+            Map.put(acc_hashid_pid_map,hashid,pid)
         )end)
+
 
     end
 

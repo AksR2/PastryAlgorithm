@@ -26,17 +26,18 @@ def Pastrynode do
         end
     end
 
-    def set_routing_table_entry(entry, longest_prefix_count, routing_table) do
+    def set_routing_table_entry(entry, longest_prefix_count, routing_table) do 
         numRow = longest_prefix_count
         numCol = Integer.parse(String.at(entry, longest_prefix_count+1))
         routing_table_updated = cond do
             routing_table[numRow][numCol] == nil ->
                 rowMap = routing_table[numRow]
-                rowMap = Map.put(rowMap, numCol, key)
+                rowMap = Map.put(rowMap, numCol, entry)
                 routing_table = Map.put(routing_table, numRow, rowMap)
             true ->
                 routing_table
             end
+        IO.inspect "The updated routing table #{routing_table_updated}"
         routing_table_updated
     end
 
@@ -56,27 +57,17 @@ def Pastrynode do
     end
 
     #routing table construction
-   def constructNodeRouteTable(nodeHash,nodelist,b) do
+    def computeRouteTable(sorted_hashid_tup,hashid_slist,hashid,hashid_idx,routing_table) do
+        
+        routing_table=Enum.reduce(hashid_slist, %{}, fn( entry ,acc_routing_table) -> (
+            if(String.equivalent?(entry,hashid) == false) do
+                 longest_prefix_count = longest_prefix_match(key,hashid,0,0)
+                 acc_routing_table=Map.merge (acc_routing_table ,set_routing_table_entry(entry, longest_prefix_count, acc_routing_table))
+            end
+        ) end)
 
-    end
-
-
-    def routeTableRows(node_list,rows,cols,r_idx,node_hash,routing_table) do
-
-    end
-
-    def routeTableCols(node_list,rows,cols,r_idx,c_idx,node_hash,substring,routing_table) do
-
-    end
-
-    #Get functions for the routing table column functions for extra flexibility
-    def getRoutTableRow(nrows,ncols,list_routing_table,r_idx,c_idx,routing_table) do
-
-    end
-
-
-    def getRouteTableCol(nrows,ncols,list_routing_table,r_idx,c_idx,routing_table) do
-
+        IO.inspect "The complete routing table : #{routing_table}"
+        routing_table
     end
 
     def searchIdx(list , s_ele) do
@@ -128,12 +119,12 @@ def Pastrynode do
 
     end
 
-    def handle_cast({:updateNode,leaf_upper,leaf_lower,neighbor_set,routing_table,num_req,num_rows,num_cols},state) do
+    def handle_cast({:updateNode,leaf_upper,leaf_lower,routing_table,num_req,num_rows,num_cols},state) do
         {_,leaf_upper}=Map.get_and_update(state,:leaf_upper, fn current_value -> {current_value,leaf_upper} end)
         {_,leaf_lower}=Map.get_and_update(state,:leaf_lower, fn current_value -> {current_value,leaf_lower} end)
         {_,routing_table}=Map.get_and_update(state,:routing_table, fn current_value -> {current_value,routing_table} end)
         {_,num_req}=Map.get_and_update(state,:num_req, fn current_value -> {current_value,num_req} end)
-        {_,hop_count}=Map.get_and_update(state,:hop_count, fn current_value -> {current_value,0} end)
+        # {_,hop_count}=Map.get_and_update(state,:hop_count, fn current_value -> {current_value,0} end)
         {_,num_rows}=Map.get_and_update(state,:num_rows, fn current_value -> {current_value,num_rows} end)
         {_,num_cols}=Map.get_and_update(state,:num_cols, fn current_value -> {current_value,num_cols} end)
 
@@ -142,7 +133,7 @@ def Pastrynode do
         state=Map.merge(state,leaf_lower)
         state=Map.merge(state, routing_table)
         state=Map.merge(state, num_req)
-        state=Map.merge(state, hop_count)
+        # state=Map.merge(state, hop_count)
         state=Map.merge(state, num_rows)
         state=Map.merge(state, num_cols)
 
