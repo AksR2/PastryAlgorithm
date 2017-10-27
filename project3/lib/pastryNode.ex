@@ -142,4 +142,17 @@ def Pastrynode do
         {:noreply,state}
     end
 
+    def handle_cast(:recieveMessage, {currentCount, hashId, nodeList}) do
+        if(currentCount < state[:num_req]) do
+            key = Enum.random(nodeList)
+            nodeList = nodeList -- [key]
+            pathTillNow = []
+            if(String.equivalent?(key, hashId) == false) do
+                Genserver.cast(self(), {:route, hashId, key, 0, pathTillNow})
+                currentCount = currentCount + 1
+                Genserver.cast(self(), {:recieveMessage, pId, currentCount, hashId, nodeList})
+            end
+        end
+    end
+
 end

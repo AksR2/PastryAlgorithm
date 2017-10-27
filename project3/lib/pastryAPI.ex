@@ -21,32 +21,20 @@ def PastryAPI do
         {:noreply, state}
     end
 
-    def handle_cast({:updatePastry, numReq, listOfNodes, numNode}, state) do
-        {_, listOfNodes} = Map.get_and_update(state,:listOfNodes, fn currentVal -> {currentVal, listOfNodes} end)
+    def handle_cast({:updatePastry, numReq, node_map, numNode}, state) do
+        {_, node_map} = Map.get_and_update(state,:node_map, fn currentVal -> {currentVal, node_map} end)
         {_, currentNumNodes} = Map.get_and_update(state, :numNode, fn currentVal ->{currentVal, numNode} end)
         {_, hopCount} = Map.get_and_update(state, :hopCount, fn currentVal -> {currentVal, 0} end)
         {_, currentNumReq} = Map.get_and_update(state, :currentNumReq, fn currentVal -> {currentVal, currentNumReq} end)
         {_, requestsReceived} = Map.get_and_update(state, :requestsReceived, fn currentVal -> {currentVal, 0} end)
 
-        state = Map.merge(state, listOfNodes)
+        state = Map.merge(state, node_map)
         state = Map.merge(state, currentNumNodes)
         state = Map.merge(state, hopCount)
         state = Map.merge(state, currentNumReq)
         state = Map.merge(state, requestsReceived)
 
         {:noreply, state}
-    end
-
-    def pastryInit(nodeList, numReq) do
-        Enum.each(Enum.with_index(nodeList), fn(x) ->
-                        routingTable = PastryNode.constructNodeRouteTable(elem(elem(x,0),1),nodeList, @b)
-                        leafUpper = PastryNode.computeLeafUpper([], elem(x, 1), nodeList, @b)
-                        leafLower = PastryNode.computeLeafLower([], elem(x, 1), nodeList, @b)
-                        neighbourSet = PastryNode.computeNeighbourSet(0, nodeList, elem(x,1), [])
-                        numRows = round(:math.log(length(list_of_nodes_with_pids))/:math.log(:math.pow(2,@b)))
-                        numCols = trunc(:math.pow(2,@b)-1)
-                        Genserver.cast(elem(elem(x,0),0), {:updateAllSets, numReq, numRows, numCols, leafUpper, leafLower, neighbourSet, routingTable})
-        end)
     end
 
     def startAlgo(numNode, numReq) do
@@ -57,18 +45,14 @@ def PastryAPI do
         #only generates the node ids and maps doesn't spawn yet.
         {idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup} = genNodeIds(range)
         
-        buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup)
+        hashid_pid_map = buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup)
 
-        nodeList = spawnNodesAndGetPidList(Enum.to_list(rangeOfNum), numNode, [], [], 1)
-        nodeList = Enum.sort(nodeList, fn(m,n) -> elem(m,2) < elem(n,2) end)
-        Genserver.cast(Daddy, {:updatePastry, numReq, nodeList, numNode})
-        pastryInit(nodeList, numReq)
-        sendDataNow(numNode, 0, nodeList)
+        Genserver.cast(Daddy, {:updatePastry, numReq, hashid_pid_map, numNode})
+        
+        sendDataNow(numNode, 0, Map.keys(hashid_pid_map), hashid_pid_map)
     end
 
     def buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup,numNodes, numReq) do
-
-
         hashid_slist= Tuple.to_list(sorted_hashid_tup)
         # Create a pid to hashid map along with leaf sets , routing table and neighbourhoodset. 
         #each character is 4 bit in hex. and 128 bit hash. Thus 128/4 = 32 which is number of digits in the hashid 
@@ -111,17 +95,11 @@ def PastryAPI do
     end
 
 
-    def sendDataNow(numNode, currentCount, nodeList) do
-        if (currentCount < numNode) do
-            nodeRandom = Enum.random(nodeList)
-            updatedList = nodeList -- [nodeRandom]
-            currentCount = currentCount + 1
-            nodeId = elem(nodeRandom, 2)
-            pId = elem(nodeRandom, 0)
-            hashCode = elem(nodeRandom, 1)
-            Genserver.cast(pId,{recieveReq, nodeId, 0, numNode, pId, hashCode, @b})
-            sendDataNow(numNode, currentCount, nodeList)
-        end
+    def sendDataNow(numNode, currentCount, nodeList, hashIdMap) do
+        Enum.each(nodeList, fn(x) -> (
+            pId = hashIdMap[x]
+            Genserver.cast(pId,{:recieveMessage, pId, 0, x, nodeList})
+        ) end)
     end
 
 end
