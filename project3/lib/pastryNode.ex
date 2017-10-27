@@ -59,20 +59,49 @@ def Pastrynode do
 
     end
 
-
-    #calculate the lower leaf set
-    def computeLeafLower(list_lower_leaf, idx, list_node , b) do
-
+    def searchIdx(list , s_ele) do
+        idx=-1
+        Enun.each(Enum.with_index(list), fn({ele,i}) -> (
+            if (String.equivalent?(ele,s_ele)) do 
+                idx=i
+            end 
+         ) end) 
+        idx
     end
-    
-     # calculate the upper leaf set
-    def computeLeafUpper(list_upper_leaf, idx,list_node, b) do
-        
-    end
 
-    #compute neighbor set
-    def computeNeighbourSet(start_value,list_node, idx ,neighbor_list) do
-       
+    #calculate the lower leaf and upper leaf sets
+    def computeLeafUpperAndLower(sorted_hashid_tup, hashid, hashid_idx) do
+
+        ulimit=tuple_size(sorted_hashid_tup)-1
+        lrange=(hashid_idx-8)..hashid_idx
+        leaf_lower=Enum.reduce (lrange, {} ,fn(idx, acc_tup) -> (
+                if(idx >-1){
+                    Tuple.append(acc_tup,elem(sorted_hashid_tup,idx))
+                }
+        )end)
+        # for the lower most case where the list will be null other wise.
+        if(tuple_size(leaf_lower)==0) do
+            Tuple.append(leaf_lower,hashid)
+        end
+        #DEBUG
+        #IO.inspect leaf_lower
+        hrange=hashid_idx..(hashid_idx+8)
+        leaf_upper=Enum.reduce (hrange, {} ,fn(idx, acc_tup) -> (
+                if(idx < ulimit){
+                    Tuple.append(acc_tup,elem(sorted_hashid_tup,idx))
+                }
+        )end) 
+        # for the lower most case where the list will be null other wise.
+        if(tuple_size(leaf_upper)==0) do
+            Tuple.append(leaf_upper,hashid)
+        end
+        #DEBUG
+        #IO.inspect leaf_upper
+        #convert to list and return
+        leaf_lower=Tuple.to_list(leaf_lower)
+        leaf_upper=Tuple.to_list(leaf_upper)
+        #return the leaves
+        {leaf_lower,leaf_upper}
     end
 
     def findMatchingSubstrInList(node_list,substring,nodeHash) do

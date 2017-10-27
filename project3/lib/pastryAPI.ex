@@ -68,8 +68,15 @@ def PastryAPI do
 
     def buildNetwork(idx_to_hashid_map,hashid_dval_map,sorted_hashid_tup,numNodes, numReq) do
 
-            leafUpper = PastryNode.computeLeafUpper([], elem(x, 1), nodeList, @b)
-            leafLower = PastryNode.computeLeafLower([], elem(x, 1), nodeList, @b)
+
+        hashid_slist= Tuple.to_list(sorted_hashid_tup)
+        # Create a pid to hashid map along with leaf sets , routing table and neighbourhoodset. 
+        Enum.reduce(hashid_slist, %{}, fn (hashid) -> (
+
+            hashid_idx=searchIdx(hashid_slist,hashid)
+            {leafLower,leafUpper} = PastryNode.computeLeafUpperAndLower(sorted_hashid_tup, hashid,hashid_idx)
+            
+        )end)
 
     end
 
@@ -85,7 +92,7 @@ def PastryAPI do
     
         #hashid to decimal value map.
         hashid_dval_map=Enum.reduce(hashrange, %{}, fn (hashid,acc_hashid_dval_map) -> (
-            dval=Integer.parse(hashid,16)
+            dval=elem(Integer.parse(hashid,16),0)
             Map.put(acc_hashid_dval_map, hashid,dval)
         )end)
 
