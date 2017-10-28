@@ -61,11 +61,11 @@ defmodule PastryAPI do
         #intialize the hashid pid map and then build the network using that
        # IO.inspect "sorted hashid list :#{inspect hashid_slist}"
         hashid_pid_map=getPIDforHashid(hashid_slist)
-        IO.puts "done hashid pid map "
+        # IO.puts "done hashid pid map "
         buildNetwork(hashid_pid_map,sorted_hashid_tup, hashid_slist,numReq)
-        IO.puts "done build network"
+        # IO.puts "done build network"
         GenServer.cast({:global, :Daddy}, {:updatePastry, numReq, hashid_pid_map, numNode})
-        IO.puts "done update pastry"
+        # IO.puts "done update pastry"
         sendDataNow(Map.keys(hashid_pid_map), hashid_pid_map)
         # testsend(sorted_hashid_tup, hashid_pid_map)
     end
@@ -92,16 +92,17 @@ defmodule PastryAPI do
 
         #TODO: make creation of static distributed and test.. This is still serial intiailization...
         Enum.each(hashid_slist, fn (hashid) -> (
+            join(hashid_slist, hashid, hashid_pid_map, sorted_hashid_tup,hashrange, numReq, numRows, numCols)
+        )end)
+    end
+
+    def join(hashid_slist, hashid, hashid_pid_map, sorted_hashid_tup,hashrange, numReq, numRows, numCols) do
             hashid_idx=PastryNode.searchIdx(hashid_slist,hashid)
             {leafLower,leafUpper} = PastryNode.computeLeafUpperAndLower(hashid_pid_map,sorted_hashid_tup, hashid,hashid_idx)
             route_table = PastryNode.computeRouteTable(hashid_pid_map, hashrange, hashid)  
             # IO.puts "Route table for hashID #{inspect hashid} , Table : Row1 #{inspect route_table[0]} "
             # IO.puts "Row2 #{inspect route_table[1]}"
             GenServer.cast(hashid_pid_map[hashid],{:updateNode,leafUpper,leafLower,route_table,numReq,numRows,numCols})
-        )end)
-
-        
-
     end
 
     def genNodeIds(range) do
@@ -135,14 +136,14 @@ defmodule PastryAPI do
             pId = hashIdMap[x]
             GenServer.cast(pId,{:recieveMessage, 0, x, nodeList})
         ) end)
-        IO.puts "Ending send data"
+        # IO.puts "Ending send data"
     end
 
-    def testsend(sorted_hashid_tup,hashid_pid_map) do 
-        source=elem(sorted_hashid_tup,8)
-        destination=elem(sorted_hashid_tup,93)
-        pathTillNow=[]
-         GenServer.cast(hashid_pid_map[source], {:route, source, destination, 0, pathTillNow})
-    end
+    # def testsend(sorted_hashid_tup,hashid_pid_map) do 
+    #     source=elem(sorted_hashid_tup,8)
+    #     destination=elem(sorted_hashid_tup,93)
+    #     pathTillNow=[]
+    #      GenServer.cast(hashid_pid_map[source], {:route, source, destination, 0, pathTillNow})
+    # end
 
 end
