@@ -18,18 +18,18 @@ defmodule Project3 do
       exit(:shutdown)
     end
     args_tup=List.to_tuple(args)
-    numNodes=elem(args_tup,0)
-    numReq=elem(args_tup,1)
-    IO.puts "numNodes:" <> numNodes
-    IO.puts "numReq:" <> numReq
-    PastryAPI.initPastry(numNodes, numReq)
+    numNodes=String.to_integer(elem(args_tup,0))
+    numReq=String.to_integer(elem(args_tup,1))
+    IO.puts "numNodes: #{numNodes}"
+    IO.puts "numReq: #{numReq}"
+    PastryAPI.startAlgo(numNodes, numReq)
 
 
-    looper
+    looper()
   end
 
-  def looper do
-    looper
+  def looper() do
+    looper()
   end
 
 end
